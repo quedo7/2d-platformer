@@ -3,15 +3,33 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class Player : MonoBehaviour {
-    private Rigidbody2D myRigidBody;
+
+    private static Player instance;
+    public static Player Instance
+    {
+        get
+        {
+            if (instance == null)
+            {
+                instance = GameObject.FindObjectOfType<Player>();
+            }
+            return instance;
+        }
+
+    }
+
+
     [SerializeField]
     private float MovementSpeed;
-    private bool facingRight;
     private Animator myAnimator;
-    private bool attack;
-    private bool slide;
-    private bool isGrounded;
-    private bool Jump;
+    [SerializeField]
+    private GameObject knafePrefab;
+    private bool facingRight;
+   
+
+  
+	
+
     [SerializeField]
     private bool airControl;
     [SerializeField]
@@ -25,88 +43,85 @@ public class Player : MonoBehaviour {
 
     [SerializeField]
     private LayerMask whatIsGround;
+    public Rigidbody2D MyRigidbody { get; set; }
+    public bool Attack { get; set; }
+    public bool Slide { get; set; }
+    public bool Jump { get; set; }
+    public bool OnGround { get; set; }
+    
+   
+
+
     // Use this for initialization
     void Start () {
         
-        myRigidBody = GetComponent<Rigidbody2D>();
+        MyRigidbody = GetComponent<Rigidbody2D>();
         myAnimator = GetComponent<Animator>();
+        
 	}
 
     // Update is called once per frame
 
     private void Update()
     {
-        HandleInput();    
+        HandleInput();  
+       
     }
 
     void FixedUpdate () {
         float horizontal = Input.GetAxis("Horizontal");
-        isGrounded = IsGrounded();
+		
+        OnGround = IsGrounded();
         HandleMovement(horizontal);
         Flip(horizontal);
-        HandleAttacks();
         HandleLayers();
-        ResetValues();
-	}
+    }
 
     private void HandleMovement(float horizontal) {
 
-        myAnimator.SetFloat("speed",Mathf.Abs(horizontal));
-
-        if (myRigidBody.velocity.y < 0) { myAnimator.SetBool("Land", true); }
-
-        if (!myAnimator.GetBool("slide") && !this.myAnimator.GetCurrentAnimatorStateInfo(0).IsTag("attack") && (isGrounded || airControl)) {
-            myRigidBody.velocity = new Vector2(horizontal*MovementSpeed,myRigidBody.velocity.y);
-        }
-            
-        if (isGrounded && Jump) {
-            isGrounded = false;
-            myRigidBody.AddForce(new Vector2(0, jumpForce));
-            myAnimator.SetTrigger("jump");
-        }
-            
-        if (slide && !this.myAnimator.GetCurrentAnimatorStateInfo(0).IsName("slide"))
+        if (MyRigidbody.velocity.y < 0)
         {
-            myAnimator.SetBool("slide", true);
-        } else if (!this.myAnimator.GetCurrentAnimatorStateInfo(0).IsName("slide")) {
-            myAnimator.SetBool("slide", false);
+            myAnimator.SetBool("land", true);
+        }
+
+        if (!Attack && !Slide && (OnGround || airControl))
+        {
+            MyRigidbody.velocity = new Vector2(horizontal * MovementSpeed, MyRigidbody.velocity.y);
         }
         
+        if (Jump && MyRigidbody.velocity.y == 0)
+        {
+            MyRigidbody.AddForce(new Vector2(0, jumpForce));
+        }
+
+        myAnimator.SetFloat("speed", Mathf.Abs(horizontal));
+       
     }
 
-    private void HandleAttacks() {
-        if (attack && !this.myAnimator.GetCurrentAnimatorStateInfo(0).IsTag("attack")) {
-            myAnimator.SetTrigger("attack");
-            myRigidBody.velocity = Vector2.zero;
-        }
-
-        
-
-        }
+   
 
     private void HandleInput() {
         if (Input.GetKeyDown(KeyCode.Space)) {
-            Jump = true;
+            myAnimator.SetTrigger("jump");
+            
         }
         if (Input.GetKeyDown(KeyCode.LeftShift)) {
-            attack = true;
+            myAnimator.SetTrigger("attack");
         }
 
         if (Input.GetKeyDown(KeyCode.LeftControl))
         {
-            slide = true;
+            myAnimator.SetTrigger("slide");
+        }
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            myAnimator.SetTrigger("throw");
+            
         }
     }
 
-    private void ResetValues()
-    {
-        attack = false;
-        slide = false;
-        Jump = false;
- 
-    }
-
-
+  
+    
     private void Flip(float horizontal) {
         if (horizontal < 0 && !facingRight || horizontal > 0 && facingRight  ) {
             facingRight = !facingRight;
@@ -117,21 +132,18 @@ public class Player : MonoBehaviour {
     }
 
     private bool IsGrounded() {
-        if (myRigidBody.velocity.y <= 0)
+        if (MyRigidbody.velocity.y <= 0)
         {
 
             foreach (Transform point in groundpoints)
             {
                 Collider2D[] colliders = Physics2D.OverlapCircleAll(point.position, groundRadius, whatIsGround);
                 
-
                 for (int i = 0; i < colliders.Length; i++)
                 {
                     if (colliders[i].gameObject != gameObject)
                     {
-                        myAnimator.ResetTrigger("jump");
-                        myAnimator.SetBool("Land",false);
-                        return true;
+                       return true;
                     }
                 }
             }
@@ -140,12 +152,31 @@ public class Player : MonoBehaviour {
     }
 
     private void HandleLayers() {
-        if (!isGrounded) {
+        if (!OnGround) {
             myAnimator.SetLayerWeight(1, 1);
         }
         else
         {
             myAnimator.SetLayerWeight(1, 0);
         }
+    }
+
+    public void ThrowKnife(int value) {
+     
+        if (!OnGround && value == 1 || OnGround && value == 0)
+        {
+            Debug.Log(OnGround+" "+ value);
+            if (!facingRight)
+            {
+                GameObject tmp = (GameObject)Instantiate(knafePrefab, transform.position, Quaternion.Euler(new Vector3(0, 0, -90)));
+                tmp.GetComponent<knife>().Initialize(Vector2.right);
+            }
+            else
+            {
+                GameObject tmp = (GameObject)Instantiate(knafePrefab, transform.position, Quaternion.Euler(new Vector3(0, 0, 90)));
+                tmp.GetComponent<knife>().Initialize(Vector2.left);
+            }
+        }
+
     }
 }
