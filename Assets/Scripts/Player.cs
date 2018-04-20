@@ -123,12 +123,13 @@ public class Player : MonoBehaviour {
             foreach (Transform point in groundpoints)
             {
                 Collider2D[] colliders = Physics2D.OverlapCircleAll(point.position, groundRadius, whatIsGround);
-                
 
+                Debug.Log(colliders.Length);
                 for (int i = 0; i < colliders.Length; i++)
                 {
                     if (colliders[i].gameObject != gameObject)
                     {
+                      
                         myAnimator.ResetTrigger("jump");
                         myAnimator.SetBool("Land",false);
                         return true;
